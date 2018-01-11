@@ -1,0 +1,4 @@
+fritzbox:
+  url: https://fritz.box
+  username: ''
+  password: password
