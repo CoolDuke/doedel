@@ -1,12 +1,13 @@
 package zeitkonto
 
 import (
-//    "fmt"
+    "fmt"
     "sort"
     "strings"
     "math"
     "regexp"
     "strconv"
+    "time"
 
     "rsc.io/pdf"
     "github.com/op/go-logging"
@@ -27,9 +28,8 @@ type TextLine struct {
 }
 
 type TimetableEntry struct {
-  Day int
-  From string
-  To string
+  From time.Time
+  To time.Time
 }
 
 func NewExtractor(log *logging.Logger, filename string) (*Extractor, error) {
@@ -71,39 +71,71 @@ func (e *Extractor) GetTimetable() ([]TimetableEntry) {
       lastY = w.Y
     }
 
+    rMonthYear, _ := regexp.Compile("von: [0-9]{2}.([0-9]{2}).([0-9]{4}) bis:")
     rDay, _ := regexp.Compile("^([0-9]{2}) (Mo|Di|Mi|Do|Fr|Sa|So)")
     rTime, _ := regexp.Compile("^[0-9]{2}:[0-9]{2}$")
+    loc, _ := time.LoadLocation("Europe/Berlin")
+    dateLayout := "2006-01-02 15:04" 
 
     var timetable []TimetableEntry
+    var month, year int
 
     for _, line := range textLines {
-      timetableEntry := TimetableEntry{0, "", ""}
+      var day int
+      var fromString, toString string
       
       for _, word := range line.Words {
+        //get month and year from table header
+        if(month == 0) {
+          match := rMonthYear.FindStringSubmatch(word.Text.S)
+          if len(match) == 3 {
+            m, err := strconv.Atoi(match[1])
+            if err == nil {
+              month = m
+            }
+            y, err := strconv.Atoi(match[2])
+            if err == nil {
+              year = y
+            }
+          }
+        }
 
+        //get days from the table
         if word.Position == 0 {
           match := rDay.FindStringSubmatch(word.Text.S)
           if len(match) > 0 {
-            day, err := strconv.Atoi(match[1])
+            d, err := strconv.Atoi(match[1])
             if err == nil {
-              timetableEntry.Day = day
+              day = d
             }
           }
         } else if word.Position == 2 {
-          timetableEntry.From = word.Text.S
+          fromString = word.Text.S
         } else if word.Position == 3 {
-          timetableEntry.To = word.Text.S
+          toString = word.Text.S
         }
       }
 
-      if timetableEntry.Day != 0 && rTime.MatchString(timetableEntry.From) && rTime.MatchString(timetableEntry.To) {
-        timetable = append(timetable, timetableEntry)
+      if day != 0 && rTime.MatchString(fromString) && rTime.MatchString(toString) {
+        from, err := time.ParseInLocation(dateLayout, fmt.Sprintf("%04d-%02d-%02d %s", year,  month, day, fromString), loc)
+        if err != nil {
+          e.Log.Warning(err)
+          continue
+        }
+
+        to, err := time.ParseInLocation(dateLayout, fmt.Sprintf("%04d-%02d-%02d %s", year,  month, day, toString), loc)
+        if err != nil {
+          e.Log.Warning(err)
+          continue
+        }
+      
+        timetable = append(timetable, TimetableEntry{from, to})
       }
     }
 
     if e.Log.IsEnabledFor(logging.DEBUG) {
       for _, timetableEntry := range timetable {
-        e.Log.Debugf("Day %d: %s-%s", timetableEntry.Day, timetableEntry.From, timetableEntry.To)
+        e.Log.Debugf("%s-%s", timetableEntry.From.Format("02.01. -> 15:04"), timetableEntry.To.Format("15:04"))
       }
     }
 
