@@ -7,6 +7,7 @@ import (
     "github.com/coolduke/doedel/config"
     "github.com/coolduke/doedel/zeitkonto"
     "github.com/coolduke/doedel/fritzbox"
+    "github.com/coolduke/doedel/heating"
 
     "github.com/op/go-logging"
 )
@@ -49,8 +50,20 @@ func main() {
     }
 
     timetable := extractor.GetTimetable()
-    
     log.Infof("Got %d records", len(timetable))
 
+    heating, err := heating.NewHeating(log, *config.Heating)
+    if err != nil {
+      log.Error(err.Error())
+      os.Exit(1)
+    }
+    log.Warningf("%s", heating)
+
     fritzbox.LogCurrentTemperatures()
+    
+//    err = fritzbox.SetTemperature("Wohnzimmer", 17)
+//    if err != nil {
+//      log.Error(err.Error())
+//      os.Exit(1)
+//    }
 }

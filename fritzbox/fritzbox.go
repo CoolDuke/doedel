@@ -40,15 +40,24 @@ func NewFritzBox(log *logging.Logger, conf config.ConfigFritzBox) (*FritzBox, er
   return &FritzBox{Log: log, Config: &conf, HomeAuto: homeAuto}, nil
 }
 
-func (fb *FritzBox) LogCurrentTemperatures() (string, error) {
+func (fb *FritzBox) LogCurrentTemperatures() error {
   devices, err := fb.HomeAuto.List()
   if err != nil {
-    return "", err
+    return err
   }
   
   for _, device := range devices.Thermostats() {
     fb.Log.Infof("Current temperature for %s: %s°C", device.Name, device.Thermostat.FmtMeasuredTemperature())
   }
   
-  return "", nil
+  return nil
+}
+
+func (fb *FritzBox) SetTemperature(thermostat string, value float64) (error) {
+  err := fb.HomeAuto.Temp(value, thermostat)
+  if err != nil {
+    return err
+  }
+  
+  return nil
 }

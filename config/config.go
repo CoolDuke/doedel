@@ -3,18 +3,25 @@ package config
 import (
     "io/ioutil"
 
+    "github.com/coolduke/doedel/types"
+
     "gopkg.in/yaml.v2"
     "github.com/op/go-logging"
 )
 
 type Config struct {
   FritzBox *ConfigFritzBox `yaml:"fritzbox"`
+  Heating  *ConfigHeating  `yaml:"heating"`
 }
 
 type ConfigFritzBox struct {
-  Url string `yaml:"url"`
+  Url      string `yaml:"url"`
   Username string `yaml:"username"`
   Password string `yaml:"password"`
+}
+
+type ConfigHeating struct {
+  Defaults map[string][]types.HeatingTime `yaml:"defaults"`
 }
 
 func GetConfig(log *logging.Logger, filename string) (Config, error) {
@@ -33,6 +40,7 @@ func GetConfig(log *logging.Logger, filename string) (Config, error) {
   }
 
   //TODO: validate configuration
+  log.Infof("Heating defaults %s\n", config)
 
   return config, nil
 }
