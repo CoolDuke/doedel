@@ -25,7 +25,7 @@ func NewHeating(log *logging.Logger, conf config.ConfigHeating) (*Timetable, err
 
   var entries []TimetableEntry
 
-  //TODO: combine this structure with zeitkonto structure
+  //TODO: combine this structure with zeitkonto structure / put this part into a function, so every minute (main loop delay) it can be checked if no time is to be set through the zeitkonto
   d := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
   for i := 0; i < 92; i = i + 1 {
     weekday := d.Weekday().String()

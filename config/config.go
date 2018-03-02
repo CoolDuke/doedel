@@ -10,8 +10,8 @@ import (
 )
 
 type Config struct {
-  FritzBox *ConfigFritzBox `yaml:"fritzbox"`
-  Heating  *ConfigHeating  `yaml:"heating"`
+  FritzBox         *ConfigFritzBox         `yaml:"fritzbox"`
+  Heating          *ConfigHeating          `yaml:"heating"`
 }
 
 type ConfigFritzBox struct {
@@ -22,6 +22,7 @@ type ConfigFritzBox struct {
 
 type ConfigHeating struct {
   Defaults map[string][]types.HeatingTime `yaml:"defaults"`
+  TimeTableOffsets types.TimetableOffsets `yaml:"timetableOffsets"`
 }
 
 func GetConfig(log *logging.Logger, filename string) (Config, error) {
