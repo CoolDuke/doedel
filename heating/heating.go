@@ -2,17 +2,17 @@ package heating
 
 import (
     "time"
+    "sort"
 
     "github.com/coolduke/doedel/config"
-//    "github.com/coolduke/doedel/types"
+    "github.com/coolduke/doedel/types"
 
     "github.com/op/go-logging"
 )
 
-type Timetable struct {
+type Heating struct {
   Log *logging.Logger
-  Config *config.ConfigHeating
-  Entries []TimetableEntry
+  Timetable []TimetableEntry
 }
 
 type TimetableEntry struct {
@@ -20,7 +20,7 @@ type TimetableEntry struct {
   Degrees int64
 }
 
-func NewHeating(log *logging.Logger, conf config.ConfigHeating) (*Timetable, error) {
+func NewHeating(log *logging.Logger, conf config.ConfigHeating) (*Heating, error) {
   now := time.Now()
 
   var entries []TimetableEntry
@@ -46,5 +46,45 @@ func NewHeating(log *logging.Logger, conf config.ConfigHeating) (*Timetable, err
     }
   }
   
-  return &Timetable{Log: log, Config: &conf, Entries: entries}, nil
+  return &Heating{Timetable: entries, Log: log}, nil
+}
+
+func (h *Heating) ApplyWorktimes(worktimes []types.WorktimeEntry) (error) {
+  var newEntries []TimetableEntry
+
+  //remove all dates we will override
+  for _, timetableEntry := range h.Timetable {
+    found := false
+    for _, worktime := range worktimes {
+      if worktime.From.Month() == timetableEntry.SwitchAt.Month() && worktime.From.Day() == timetableEntry.SwitchAt.Day() {
+        found = true
+        break
+      }
+    }
+    if !found {
+      newEntries = append(newEntries, timetableEntry)
+    } else {
+      h.Log.Debugf("ignoring %d-%d", timetableEntry.SwitchAt.Month(), timetableEntry.SwitchAt.Day())
+    }
+  }
+
+  //add new entries
+  for _, worktime := range worktimes {
+    //TODO: implement offsets
+    newEntries = append(newEntries, TimetableEntry{worktime.From, 22}, TimetableEntry{worktime.To, 16})
+  }
+
+  //get dates back into order
+  sort.Slice(newEntries, func(i, j int) bool { return newEntries[i].SwitchAt.Before(newEntries[j].SwitchAt)})
+
+  if h.Log.IsEnabledFor(logging.DEBUG) {
+    h.Log.Debugf("Modified timetable:")
+    for _, entry := range newEntries {
+      h.Log.Debugf("At %s switch to %d", entry.SwitchAt.String(), entry.Degrees)
+    }
+  }
+  
+  h.Timetable = newEntries
+
+  return nil
 }

@@ -57,7 +57,12 @@ func main() {
       log.Error(err.Error())
       os.Exit(1)
     }
-    log.Warningf("%s", heating)
+
+    err = heating.ApplyWorktimes(worktimes)
+    if err != nil {
+      log.Error(err.Error())
+      os.Exit(1)
+    }
 
     fritzbox.LogCurrentTemperatures()
     

@@ -41,7 +41,7 @@ func GetConfig(log *logging.Logger, filename string) (Config, error) {
   }
 
   //TODO: validate configuration
-  log.Infof("Heating defaults %s\n", config)
+//  log.Infof("Heating defaults %s\n", config)
 
   return config, nil
 }
