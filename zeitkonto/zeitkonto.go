@@ -9,6 +9,8 @@ import (
     "strconv"
     "time"
 
+    "github.com/coolduke/doedel/types"
+
     "rsc.io/pdf"
     "github.com/op/go-logging"
 )
@@ -27,11 +29,6 @@ type TextLine struct {
   Words []Word
 }
 
-type TimetableEntry struct {
-  From time.Time
-  To time.Time
-}
-
 func NewExtractor(log *logging.Logger, filename string) (*Extractor, error) {
     log.Noticef("Reading time information from: %s", filename)
     pdfReader, err := pdf.Open(filename)
@@ -42,7 +39,7 @@ func NewExtractor(log *logging.Logger, filename string) (*Extractor, error) {
     return &Extractor{Pdf: pdfReader, Log: log}, nil
 }
 
-func (e *Extractor) GetTimetable() ([]TimetableEntry) {
+func (e *Extractor) GetWorktimes() ([]types.WorktimeEntry) {
     var textLines []*TextLine
     
     page := e.Pdf.Page(1)
@@ -77,7 +74,7 @@ func (e *Extractor) GetTimetable() ([]TimetableEntry) {
     loc, _ := time.LoadLocation("Europe/Berlin")
     dateLayout := "2006-01-02 15:04" 
 
-    var timetable []TimetableEntry
+    var worktimes []types.WorktimeEntry
     var month, year int
 
     for _, line := range textLines {
@@ -129,17 +126,17 @@ func (e *Extractor) GetTimetable() ([]TimetableEntry) {
           continue
         }
       
-        timetable = append(timetable, TimetableEntry{from, to})
+        worktimes = append(worktimes, types.WorktimeEntry{from, to})
       }
     }
 
     if e.Log.IsEnabledFor(logging.DEBUG) {
-      for _, timetableEntry := range timetable {
-        e.Log.Debugf("%s-%s", timetableEntry.From.Format("02.01. -> 15:04"), timetableEntry.To.Format("15:04"))
+      for _, worktimeEntry := range worktimes {
+        e.Log.Debugf("%s-%s", worktimeEntry.From.Format("02.01. -> 15:04"), worktimeEntry.To.Format("15:04"))
       }
     }
 
-    return timetable
+    return worktimes
 }
 
 /* from https://github.com/rsc/arm/blob/master/armspec/spec.go */

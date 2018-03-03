@@ -7,6 +7,11 @@ type HeatingTime struct {
   Degrees    int64      `yaml:"degrees"`
 }
 
+type WorktimeEntry struct {
+  From time.Time
+  To time.Time
+}
+
 type TimetableOffsetStart struct {
   At         TimeString `yaml:"at"`
   Offset     float64    `yaml:"offset"`

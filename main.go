@@ -49,8 +49,8 @@ func main() {
       os.Exit(1)
     }
 
-    timetable := extractor.GetTimetable()
-    log.Infof("Got %d records", len(timetable))
+    worktimes := extractor.GetWorktimes()
+    log.Infof("Got %d records", len(worktimes))
 
     heating, err := heating.NewHeating(log, *config.Heating)
     if err != nil {
