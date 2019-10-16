@@ -1,17 +1,18 @@
 package heating
 
 import (
-    "time"
-    "sort"
+  "time"
+  "sort"
 
-    "github.com/coolduke/doedel/config"
-    "github.com/coolduke/doedel/types"
+  "github.com/coolduke/doedel/config"
+  "github.com/coolduke/doedel/types"
 
-    "github.com/op/go-logging"
+  "github.com/op/go-logging"
 )
 
+var log = logging.MustGetLogger("doedel")
+
 type Heating struct {
-  Log *logging.Logger
   Timetable []TimetableEntry
 }
 
@@ -20,15 +21,15 @@ type TimetableEntry struct {
   Degrees int64
 }
 
-func NewHeating(log *logging.Logger, conf config.ConfigHeating) (*Heating, error) {
+func NewHeating() (*Heating, error) {
   now := time.Now()
 
   var entries []TimetableEntry
 
   d := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-  for i := 0; i < 92; i = i + 1 {
+  for i := 0; i < 31; i = i + 1 { //92
     weekday := d.Weekday().String()
-    times, ok := conf.Defaults[weekday]
+    times, ok := config.Conf.Heating.Defaults[weekday]
     if ok == false {
       log.Warningf("Missing default definition for %s, using 16 degrees as default %s", weekday)
       entries = append(entries, TimetableEntry{d, 16})
@@ -46,7 +47,7 @@ func NewHeating(log *logging.Logger, conf config.ConfigHeating) (*Heating, error
     }
   }
   
-  return &Heating{Timetable: entries, Log: log}, nil
+  return &Heating{Timetable: entries}, nil
 }
 
 func (h *Heating) ApplyWorktimes(worktimes []types.WorktimeEntry) (error) {
@@ -63,24 +64,22 @@ func (h *Heating) ApplyWorktimes(worktimes []types.WorktimeEntry) (error) {
     }
     if !found {
       newEntries = append(newEntries, timetableEntry)
-    } else {
-      h.Log.Debugf("ignoring %d-%d", timetableEntry.SwitchAt.Month(), timetableEntry.SwitchAt.Day())
     }
   }
 
   //add new entries
   for _, worktime := range worktimes {
     //TODO: implement offsets
-    newEntries = append(newEntries, TimetableEntry{worktime.From, 22}, TimetableEntry{worktime.To, 16})
+    newEntries = append(newEntries, TimetableEntry{worktime.From, 22}, TimetableEntry{worktime.To, 22})
   }
 
   //get dates back into order
   sort.Slice(newEntries, func(i, j int) bool { return newEntries[i].SwitchAt.Before(newEntries[j].SwitchAt)})
 
-  if h.Log.IsEnabledFor(logging.DEBUG) {
-    h.Log.Debugf("Modified timetable:")
+  if log.IsEnabledFor(logging.DEBUG) {
+    log.Debugf("Modified timetable:")
     for _, entry := range newEntries {
-      h.Log.Debugf("At %s switch to %d", entry.SwitchAt.String(), entry.Degrees)
+      log.Debugf("At %s switch to %d", entry.SwitchAt.String(), entry.Degrees)
     }
   }
   

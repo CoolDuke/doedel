@@ -1,13 +1,16 @@
 package config
 
 import (
-    "io/ioutil"
+  "io/ioutil"
 
-    "github.com/coolduke/doedel/types"
+  "github.com/coolduke/doedel/types"
 
-    "gopkg.in/yaml.v2"
-    "github.com/op/go-logging"
+  "gopkg.in/yaml.v2"
+  "github.com/op/go-logging"
 )
+
+var log = logging.MustGetLogger("doedel")
+var Conf Config
 
 type Config struct {
   FritzBox         *ConfigFritzBox         `yaml:"fritzbox"`
@@ -25,23 +28,27 @@ type ConfigHeating struct {
   TimeTableOffsets types.TimetableOffsets `yaml:"timetableOffsets"`
 }
 
-func GetConfig(log *logging.Logger, filename string) (Config, error) {
+func LoadConfig(filename string) (error) {
   log.Noticef("Reading configuration from: %s", filename)
 
   bytes, err := ioutil.ReadFile(filename)
   if err != nil {
-    return Config{}, err
+    log.Errorf("Unable to load configuration from %s: %s", filename, err.Error())
+    return err
   }
 
   var config Config
 
   err = yaml.Unmarshal(bytes, &config)
   if err != nil {
-    return Config{}, err
+    log.Errorf("Unable to parse YAML from %s: %s", filename, err.Error())
+    return err
   }
 
   //TODO: validate configuration
 //  log.Infof("Heating defaults %s\n", config)
 
-  return config, nil
+  Conf = config
+
+  return nil
 }
