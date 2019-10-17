@@ -5,7 +5,7 @@ import (
 )
 
 type HeatingTime struct {
-  Time       TimeString `yaml:"time"`
+  TimeString TimeString `yaml:"time"`
   Degrees    int64      `yaml:"degrees"`
 }
 
@@ -36,7 +36,9 @@ type TimetableOffsets struct {
   Evening    TimetableOffsetDaytime `yaml:"evening"`
 }
 
-type TimeString time.Time
+type TimeString struct {
+  Time time.Time
+}
 
 func (ts *TimeString) UnmarshalYAML(unmarshal func(interface{}) error) error {
   var s string
@@ -50,7 +52,7 @@ func (ts *TimeString) UnmarshalYAML(unmarshal func(interface{}) error) error {
   if err != nil {
     return err
   }
-  *ts = TimeString(t)
+  *ts = TimeString{t}
 
   return nil
 }

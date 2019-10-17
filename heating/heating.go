@@ -8,6 +8,8 @@ import (
   "github.com/coolduke/doedel/types"
 
   "github.com/op/go-logging"
+
+_  "github.com/kr/pretty"
 )
 
 var log = logging.MustGetLogger("doedel")
@@ -27,7 +29,7 @@ func NewHeating() (*Heating, error) {
   var entries []TimetableEntry
 
   d := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-  for i := 0; i < 31; i = i + 1 { //92
+  for i := 0; i < 92; i = i + 1 {
     weekday := d.Weekday().String()
     times, ok := config.Conf.Heating.Defaults[weekday]
     if ok == false {
@@ -35,16 +37,10 @@ func NewHeating() (*Heating, error) {
       entries = append(entries, TimetableEntry{d, 16})
     } else {
       for _, heatingTime := range times {
-        entries = append(entries, TimetableEntry{d.Add(time.Duration(time.Time(heatingTime.Time).Unix()) * 1000000000), heatingTime.Degrees})
+        entries = append(entries, TimetableEntry{d.Add(time.Duration(time.Time(heatingTime.TimeString.Time).Unix()) * 1000000000), heatingTime.Degrees})
       }
     }
     d = d.AddDate(0, 0, 1)
-  }
-
-  if log.IsEnabledFor(logging.DEBUG) {
-    for _, entry := range entries {
-      log.Debugf("At %s switch to %d", entry.SwitchAt.String(), entry.Degrees)
-    }
   }
   
   return &Heating{Timetable: entries}, nil
@@ -69,8 +65,66 @@ func (h *Heating) ApplyWorktimes(worktimes []types.WorktimeEntry) (error) {
 
   //add new entries
   for _, worktime := range worktimes {
-    //TODO: implement offsets
-    newEntries = append(newEntries, TimetableEntry{worktime.From, 22}, TimetableEntry{worktime.To, 22})
+    year, month, day := worktime.From.Date()
+    var morningStart, morningEnd, eveningStart, eveningEnd time.Time
+
+    //TODO: Move to type.TimeString
+    morningStart = time.Date(year, month, day,
+                              config.Conf.Heating.TimeTableOffsets.Morning.Start.LeastAt.Time.Hour(), 
+                              config.Conf.Heating.TimeTableOffsets.Morning.Start.LeastAt.Time.Minute(),
+                              0, 0, time.Local,
+                             )
+
+    morningEnd = time.Date(year, month, day,
+                            config.Conf.Heating.TimeTableOffsets.Morning.End.EarliestAt.Time.Hour(), 
+                            config.Conf.Heating.TimeTableOffsets.Morning.End.EarliestAt.Time.Minute(),
+                            0, 0, time.Local,
+                           )
+
+    eveningStart = time.Date(year, month, day,
+                              config.Conf.Heating.TimeTableOffsets.Evening.Start.LeastAt.Time.Hour(), 
+                              config.Conf.Heating.TimeTableOffsets.Evening.Start.LeastAt.Time.Minute(),
+                              0, 0, time.Local,
+                             )
+
+    //TODO: also implement if-clause for other times / use At time if defined
+    var nilTimeString types.TimeString
+    if config.Conf.Heating.TimeTableOffsets.Evening.End.At != nilTimeString {
+      eveningEnd = time.Date(year, month, day,
+                             config.Conf.Heating.TimeTableOffsets.Evening.End.At.Time.Hour(), 
+                             config.Conf.Heating.TimeTableOffsets.Evening.End.At.Time.Minute(),
+                             0, 0, time.Local,
+                            )
+    } else {
+      eveningEnd = time.Date(year, month, day,
+                             config.Conf.Heating.TimeTableOffsets.Evening.End.EarliestAt.Time.Hour(), 
+                             config.Conf.Heating.TimeTableOffsets.Evening.End.EarliestAt.Time.Minute(),
+                             0, 0, time.Local,
+                            )
+    }
+
+    worktimeFromWithOffset := worktime.From.Add(time.Minute * time.Duration(config.Conf.Heating.TimeTableOffsets.Morning.Start.Offset))
+    if worktimeFromWithOffset.Before(morningStart) {
+      morningStart = worktimeFromWithOffset
+    }
+    worktimeFromWithOffset = worktime.From.Add(time.Minute * time.Duration(config.Conf.Heating.TimeTableOffsets.Morning.End.Offset))
+    if worktimeFromWithOffset.After(morningEnd) {
+      morningEnd = worktimeFromWithOffset
+    }
+
+    worktimeToWithOffset := worktime.To.Add(time.Minute * time.Duration(config.Conf.Heating.TimeTableOffsets.Evening.Start.Offset))
+    if worktimeToWithOffset.Before(eveningStart) {
+      eveningStart = worktimeToWithOffset
+    }
+    worktimeToWithOffset = worktime.To.Add(time.Minute * time.Duration(config.Conf.Heating.TimeTableOffsets.Evening.End.Offset))
+    if worktimeToWithOffset.After(eveningEnd) {
+      eveningEnd = worktimeToWithOffset
+    }
+
+    newEntries = append(newEntries, TimetableEntry{morningStart, 22},
+                                    TimetableEntry{morningEnd, 17},
+                                    TimetableEntry{eveningStart, 22},
+                                    TimetableEntry{eveningEnd, 17})
   }
 
   //get dates back into order
